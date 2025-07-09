@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, MapPin, User, X } from "lucide-react";
+import { Camera, MapPin, User, X, ImageIcon } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,21 +17,39 @@ interface PostModalProps {
 export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const postMutation = useMutation({
-    mutationFn: async (postData: { content: string; category: string }) => {
-      const response = await apiRequest("POST", "/api/posts", {
-        userId: 1, // TODO: Get from auth context
-        content: postData.content,
-        category: postData.category,
+    mutationFn: async (postData: { content: string; category: string; image?: File }) => {
+      const formData = new FormData();
+      formData.append('userId', '1'); // TODO: Get from auth context
+      formData.append('content', postData.content);
+      formData.append('category', postData.category);
+      
+      if (postData.image) {
+        formData.append('image', postData.image);
+      }
+      
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        body: formData,
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create post');
+      }
+      
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       setContent("");
       setCategory("");
+      setSelectedImage(null);
+      setImagePreview(null);
       onClose();
       toast({
         title: "Post created",
@@ -50,14 +68,66 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (content.trim() && category) {
-      postMutation.mutate({ content: content.trim(), category });
+      postMutation.mutate({ 
+        content: content.trim(), 
+        category,
+        image: selectedImage || undefined
+      });
     }
   };
 
   const handleClose = () => {
     setContent("");
     setCategory("");
+    setSelectedImage(null);
+    setImagePreview(null);
     onClose();
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSelectedImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -92,14 +162,46 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
               maxLength={280}
             />
             
+            {/* Image preview */}
+            {imagePreview && (
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="Selected image"
+                  className="w-full h-48 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+            
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            
             <div className="flex items-center space-x-4">
               <Button
                 type="button"
                 variant="ghost"
+                onClick={handlePhotoClick}
                 className="flex items-center space-x-2 text-garden-green hover:bg-garden-green hover:bg-opacity-10"
               >
                 <Camera className="w-4 h-4" />
-                <span className="text-sm font-medium">Add Photo</span>
+                <span className="text-sm font-medium">
+                  {selectedImage ? "Change Photo" : "Add Photo"}
+                </span>
               </Button>
               <Button
                 type="button"

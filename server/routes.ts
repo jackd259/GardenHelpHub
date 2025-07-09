@@ -1,10 +1,41 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
+import path from "path";
 import { storage } from "./storage";
 import { insertUserSchema, insertPostSchema, insertCommentSchema, insertLikeSchema } from "@shared/schema";
 import { z } from "zod";
 
+// Configure multer for file uploads
+const storage_config = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename with timestamp
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage_config,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded images
+  app.use('/uploads', express.static('uploads'));
   // User routes
   app.post("/api/users", async (req, res) => {
     try {
@@ -62,12 +93,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/posts", async (req, res) => {
+  app.post("/api/posts", upload.single('image'), async (req, res) => {
     try {
-      const postData = insertPostSchema.parse(req.body);
+      const postData = insertPostSchema.parse({
+        ...req.body,
+        imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+      });
       const post = await storage.createPost(postData);
       res.json(post);
     } catch (error) {
+      if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File too large (max 5MB)" });
+        }
+      }
       res.status(400).json({ message: "Invalid post data" });
     }
   });
