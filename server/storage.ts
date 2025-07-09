@@ -70,6 +70,123 @@ export class MemStorage implements IStorage {
       };
       this.users.set(newUser.id, newUser);
     });
+
+    // Create some sample posts
+    const samplePosts = [
+      {
+        userId: 1,
+        content: "🚨 DROUGHT EMERGENCY: My tomatoes are wilting despite daily watering! The soil is bone dry 2 inches down. I'm in Davis, CA and we're hitting 105°F daily. Has anyone found effective deep watering techniques? I'm considering drip irrigation but need advice on setup for raised beds.",
+        category: "drought",
+        imageUrl: null,
+      },
+      {
+        userId: 6,
+        content: "💡 EXPERT TIP: For drought conditions, try the 'deep and infrequent' watering method. Water thoroughly 2-3 times per week rather than daily light watering. This encourages deep root growth. Also, add a 3-inch mulch layer to retain moisture. I've seen 40% water savings with this approach.",
+        category: "plant-care",
+        imageUrl: null,
+      },
+      {
+        userId: 2,
+        content: "SUCCESS STORY! 🎉 After 3 weeks of battling aphids on my roses, I finally won using ladybugs and neem oil spray. The key was persistence - spraying every 3 days and releasing beneficial insects. My roses are blooming beautifully again! Happy to share my exact treatment schedule.",
+        category: "success",
+        imageUrl: null,
+      },
+      {
+        userId: 3,
+        content: "HELP NEEDED: Strange white spots appearing on my pepper plant leaves. Started small but now covering 50% of the foliage. Plants are in full sun, zone 9a. Could this be powdery mildew? What's the best organic treatment? I've heard about baking soda solutions but want expert advice first.",
+        category: "pests",
+        imageUrl: null,
+      },
+      {
+        userId: 4,
+        content: "Water-wise gardening update from Fresno: Switched to drought-resistant natives and cut my water bill by 60%! California poppies, lavender, and rosemary are thriving. The initial setup cost was $200 but savings are already showing. Zone 9a gardeners - highly recommend this transition!",
+        category: "success",
+        imageUrl: null,
+      },
+      {
+        userId: 5,
+        content: "Spider mites are decimating my cucumber plants! 😱 I see tiny webs and leaves turning yellow/bronze. Traditional sprays aren't working. Has anyone tried predatory mites? I'm desperate - these plants were supposed to be my main summer crop. San Jose area, zone 9b.",
+        category: "pests",
+        imageUrl: null,
+      },
+      {
+        userId: 1,
+        content: "Follow-up on my drought situation: The drip irrigation system is AMAZING! 💧 Tomatoes recovered within days. Installation took 4 hours but so worth it. Water usage dropped 50% while plant health improved dramatically. Davis gardeners - I have extra supplies if anyone wants to try!",
+        category: "success",
+        imageUrl: null,
+      },
+      {
+        userId: 2,
+        content: "Question about companion planting: Does anyone have experience with basil and tomatoes together? I've read it helps with pest control, but my basil seems to be struggling in the tomato bed. Should I adjust spacing or watering schedule? Zone 9b, San Jose area.",
+        category: "plant-care",
+        imageUrl: null,
+      },
+    ];
+
+    samplePosts.forEach(postData => {
+      const post: Post = {
+        id: this.currentPostId++,
+        ...postData,
+        likes: Math.floor(Math.random() * 50) + 1,
+        commentCount: Math.floor(Math.random() * 15) + 1,
+        createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000), // Random time within last week
+      };
+      this.posts.set(post.id, post);
+    });
+
+    // Create some sample comments
+    const sampleComments = [
+      { postId: 1, userId: 6, content: "I'd recommend deep watering twice weekly instead of daily. Also, check if your soil has proper drainage - sometimes plants can't access water even when it's there." },
+      { postId: 1, userId: 2, content: "Same issue here! I installed a drip system last month and it's been a game-changer. Happy to share my setup details." },
+      { postId: 2, userId: 3, content: "This is exactly what I needed! Going to try the mulch layer this weekend. Thank you for the specific measurements." },
+      { postId: 3, userId: 4, content: "Congrats! I've been struggling with aphids too. Could you share your exact neem oil schedule?" },
+      { postId: 4, userId: 6, content: "Looks like powdery mildew. Try a milk spray solution (1 part milk to 10 parts water) - it's organic and very effective." },
+      { postId: 6, userId: 1, content: "Spider mites are tough! I've had success with predatory mites from nature's good guys. Takes about 2 weeks to see results." },
+    ];
+
+    sampleComments.forEach(commentData => {
+      const comment: Comment = {
+        id: this.currentCommentId++,
+        ...commentData,
+        createdAt: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000), // Random time within last 5 days
+      };
+      this.comments.set(comment.id, comment);
+    });
+
+    // Create some sample likes
+    const sampleLikes = [
+      { postId: 1, userId: 2 },
+      { postId: 1, userId: 3 },
+      { postId: 1, userId: 4 },
+      { postId: 2, userId: 1 },
+      { postId: 2, userId: 3 },
+      { postId: 2, userId: 4 },
+      { postId: 2, userId: 5 },
+      { postId: 3, userId: 1 },
+      { postId: 3, userId: 6 },
+      { postId: 4, userId: 2 },
+      { postId: 4, userId: 5 },
+      { postId: 5, userId: 1 },
+      { postId: 5, userId: 2 },
+      { postId: 5, userId: 6 },
+      { postId: 6, userId: 3 },
+      { postId: 6, userId: 4 },
+      { postId: 7, userId: 2 },
+      { postId: 7, userId: 3 },
+      { postId: 7, userId: 6 },
+      { postId: 8, userId: 1 },
+      { postId: 8, userId: 4 },
+    ];
+
+    sampleLikes.forEach(likeData => {
+      const like: Like = {
+        id: this.currentLikeId++,
+        ...likeData,
+        createdAt: new Date(Date.now() - Math.random() * 6 * 24 * 60 * 60 * 1000), // Random time within last 6 days
+      };
+      const key = `${likeData.postId}-${likeData.userId}`;
+      this.likes.set(key, like);
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {
