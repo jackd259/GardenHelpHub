@@ -40,7 +40,7 @@ export default function PostCard({ post }: PostCardProps) {
   const likeMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", `/api/posts/${post.id}/like`, {
-        userId: 1, // TODO: Get from auth context
+        userId: 7, // TODO: Get from auth context
       });
       return response.json();
     },
@@ -53,7 +53,7 @@ export default function PostCard({ post }: PostCardProps) {
   const commentMutation = useMutation({
     mutationFn: async (content: string) => {
       const response = await apiRequest("POST", `/api/posts/${post.id}/comments`, {
-        userId: 1, // TODO: Get from auth context
+        userId: 7, // TODO: Get from auth context
         content,
       });
       return response.json();

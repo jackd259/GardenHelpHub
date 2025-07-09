@@ -25,7 +25,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const postMutation = useMutation({
     mutationFn: async (postData: { content: string; category: string; image?: File }) => {
       const formData = new FormData();
-      formData.append('userId', '1'); // TODO: Get from auth context
+      formData.append('userId', '7'); // TODO: Get from auth context
       formData.append('content', postData.content);
       formData.append('category', postData.category);
       

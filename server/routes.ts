@@ -97,6 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postData = insertPostSchema.parse({
         ...req.body,
+        userId: parseInt(req.body.userId), // Convert string to number
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null
       });
       const post = await storage.createPost(postData);
@@ -127,11 +128,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const postId = parseInt(req.params.id);
       const commentData = insertCommentSchema.parse({
         ...req.body,
-        postId
+        postId,
+        userId: parseInt(req.body.userId) // Convert string to number
       });
+      
       const comment = await storage.createComment(commentData);
+      
+      // Update comment count
+      const commentCount = await storage.getCommentsByPost(postId);
+      await storage.updatePostCommentCount(postId, commentCount.length);
+      
       res.json(comment);
     } catch (error) {
+      console.error("Comment creation error:", error);
       res.status(400).json({ message: "Invalid comment data" });
     }
   });
