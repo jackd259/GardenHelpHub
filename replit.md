@@ -26,11 +26,13 @@ Preferred communication style: Simple, everyday language.
 - **Development**: Hot reload with Vite integration in development mode
 
 ### Database & ORM
-- **Database**: PostgreSQL (configured for production)
-- **ORM**: Drizzle ORM with type-safe queries
-- **Connection**: Neon Database serverless connection
+- **Database**: PostgreSQL with Neon serverless (active)
+- **ORM**: Drizzle ORM with type-safe queries and relations
+- **Connection**: Neon Database serverless with WebSocket support
 - **Schema Management**: Drizzle Kit for migrations and schema management
+- **Storage**: DatabaseStorage class implementing IStorage interface
 - **Validation**: Zod schemas for runtime type validation
+- **Seeding**: Automated database seeding with realistic garden data
 
 ## Key Components
 
@@ -56,11 +58,21 @@ Preferred communication style: Simple, everyday language.
 
 ## Data Flow
 
-1. **User Authentication**: Currently uses hardcoded user ID (future enhancement needed)
-2. **Post Creation**: Modal-based post creation with category selection
-3. **Content Display**: Infinite scroll feed with category filtering
-4. **Social Interactions**: Real-time like/comment updates with optimistic UI
-5. **Search**: Client-side filtering with server-side category endpoints
+1. **Database**: PostgreSQL with persistent storage and relational integrity
+2. **User Authentication**: Currently uses hardcoded user ID (future enhancement needed)
+3. **Post Creation**: Modal-based post creation with category selection
+4. **Content Display**: Database-driven feed with category filtering and sorting
+5. **Social Interactions**: Real-time like/comment updates with database persistence
+6. **Search**: Client-side filtering with server-side category endpoints
+
+## Recent Changes (July 9, 2025)
+
+- **Database Migration**: Migrated from in-memory storage to PostgreSQL
+- **Added Database Relations**: Implemented Drizzle relations for users, posts, comments, and likes
+- **Created DatabaseStorage**: New storage layer with proper SQL queries
+- **Database Seeding**: Added comprehensive seeding script with realistic gardening data
+- **Fixed Community Page**: Added missing Community and Saved pages to router
+- **Enhanced Sample Data**: Realistic posts about drought, pests, and plant care with engagement
 
 ## External Dependencies
 

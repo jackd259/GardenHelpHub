@@ -1,4 +1,6 @@
 import { users, posts, comments, likes, type User, type InsertUser, type Post, type InsertPost, type Comment, type InsertComment, type Like, type InsertLike, type PostWithUser, type CommentWithUser } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -24,6 +26,165 @@ export interface IStorage {
   createLike(like: InsertLike): Promise<Like>;
   deleteLike(postId: number, userId: number): Promise<void>;
   getLikeCount(postId: number): Promise<number>;
+}
+
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getPosts(): Promise<PostWithUser[]> {
+    const result = await db
+      .select()
+      .from(posts)
+      .innerJoin(users, eq(posts.userId, users.id))
+      .orderBy(desc(posts.createdAt));
+    
+    return result.map(row => ({
+      ...row.posts,
+      user: row.users
+    }));
+  }
+
+  async getPostsByCategory(category: string): Promise<PostWithUser[]> {
+    const result = await db
+      .select()
+      .from(posts)
+      .innerJoin(users, eq(posts.userId, users.id))
+      .where(eq(posts.category, category))
+      .orderBy(desc(posts.createdAt));
+    
+    return result.map(row => ({
+      ...row.posts,
+      user: row.users
+    }));
+  }
+
+  async getPost(id: number): Promise<PostWithUser | undefined> {
+    const result = await db
+      .select()
+      .from(posts)
+      .innerJoin(users, eq(posts.userId, users.id))
+      .where(eq(posts.id, id));
+    
+    if (result.length === 0) return undefined;
+    
+    return {
+      ...result[0].posts,
+      user: result[0].users
+    };
+  }
+
+  async createPost(insertPost: InsertPost): Promise<Post> {
+    const [post] = await db
+      .insert(posts)
+      .values(insertPost)
+      .returning();
+    return post;
+  }
+
+  async updatePostLikes(postId: number, likesCount: number): Promise<void> {
+    await db
+      .update(posts)
+      .set({ likes: likesCount })
+      .where(eq(posts.id, postId));
+  }
+
+  async updatePostCommentCount(postId: number, count: number): Promise<void> {
+    await db
+      .update(posts)
+      .set({ commentCount: count })
+      .where(eq(posts.id, postId));
+  }
+
+  async getCommentsByPost(postId: number): Promise<CommentWithUser[]> {
+    const result = await db
+      .select()
+      .from(comments)
+      .innerJoin(users, eq(comments.userId, users.id))
+      .where(eq(comments.postId, postId))
+      .orderBy(comments.createdAt);
+    
+    return result.map(row => ({
+      ...row.comments,
+      user: row.users
+    }));
+  }
+
+  async createComment(insertComment: InsertComment): Promise<Comment> {
+    const [comment] = await db
+      .insert(comments)
+      .values(insertComment)
+      .returning();
+    
+    // Update post comment count
+    const commentCount = await db
+      .select()
+      .from(comments)
+      .where(eq(comments.postId, insertComment.postId));
+    
+    await this.updatePostCommentCount(insertComment.postId, commentCount.length);
+    
+    return comment;
+  }
+
+  async getLike(postId: number, userId: number): Promise<Like | undefined> {
+    const [like] = await db
+      .select()
+      .from(likes)
+      .where(and(eq(likes.postId, postId), eq(likes.userId, userId)));
+    return like || undefined;
+  }
+
+  async createLike(insertLike: InsertLike): Promise<Like> {
+    const [like] = await db
+      .insert(likes)
+      .values(insertLike)
+      .returning();
+    
+    // Update post like count
+    const likeCount = await this.getLikeCount(insertLike.postId);
+    await this.updatePostLikes(insertLike.postId, likeCount);
+    
+    return like;
+  }
+
+  async deleteLike(postId: number, userId: number): Promise<void> {
+    await db
+      .delete(likes)
+      .where(and(eq(likes.postId, postId), eq(likes.userId, userId)));
+    
+    // Update post like count
+    const likeCount = await this.getLikeCount(postId);
+    await this.updatePostLikes(postId, likeCount);
+  }
+
+  async getLikeCount(postId: number): Promise<number> {
+    const result = await db
+      .select()
+      .from(likes)
+      .where(eq(likes.postId, postId));
+    return result.length;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -324,4 +485,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
