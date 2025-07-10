@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "prebuild": "npx update-browserslist-db@latest",
-    "build": "tsc && vite build",
+    "build": "tsc -p tsconfig.backend.json && vite build",
     "start": "NODE_ENV=production node dist/server/index.js",
-    "check": "tsc",
+    "check": "tsc -p tsconfig.backend.json",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
