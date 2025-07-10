@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && npm run db:push",
+    "build": "echo '🔧 BUILD: Starting Vite build...' && vite build && echo '🔧 BUILD: Building backend...' && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && echo '🔧 BUILD: Running drizzle push...' && npm run db:push",
     "db:push": "drizzle-kit push",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
