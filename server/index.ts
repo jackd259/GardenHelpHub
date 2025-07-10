@@ -6,6 +6,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -24,47 +25,62 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      log(logLine.length > 80 ? logLine.slice(0, 79) + "…" : logLine);
     }
   });
-
   next();
 });
 
-(async () => {
-  const server = await registerRoutes(app);
+// Error handler
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  res.status(status).json({ message });
+  console.error(err); // Log the full error
+});
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+// Start server function
+async function startServer() {
+  try {
+    const server = await registerRoutes(app);
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    // Vite setup
+    if (process.env.NODE_ENV === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+    const port = parseInt(process.env.PORT || '5000');
+
+    return new Promise((resolve) => {
+      server.listen({
+        port,
+        host: "0.0.0.0",
+        reusePort: true,
+      }, () => {
+        log(`Server running on port ${port} in ${process.env.NODE_ENV} mode`);
+        resolve(server);
+      });
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
   }
+}
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000');
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
-})();
+// Start the server and handle errors
+startServer().catch(err => {
+  console.error("Server startup failed:", err);
+  process.exit(1);
+});
+
+// Handle shutdown signals
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
