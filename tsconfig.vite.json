@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",     // ✅ allows import.meta
+    "moduleResolution": "bundler"
+  },
+  "include": [
+    "vite.config.ts",
+    "server/vite.ts",
+    "client/src"
+  ]
+}

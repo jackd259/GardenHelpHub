@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",         // ✅ required for Node.js backend
     "outDir": "dist",
     "rootDir": ".",
-    "module": "commonjs",
-    "target": "es6",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "moduleResolution": "node",
-    "baseUrl": ".",
     "types": ["node"],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"]
