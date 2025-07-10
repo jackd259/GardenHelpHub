@@ -1,112 +1,70 @@
-import { log, setupVite, serveStatic } from "./vite.js";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic } from "./vite.js";
+import { setupVite, serveStatic, log } from "./vite";
 
-// Initialize Express with production defaults
 const app = express();
-app.disable('x-powered-by'); // Security best practice
-app.use(express.json({ limit: '10kb' })); // Prevent memory overload
-app.use(express.urlencoded({ extended: false, limit: '10kb' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-// Request logging middleware (optimized for production)
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== 'production' || req.path.startsWith('/api')) {
-    const start = Date.now();
-    const originalJson = res.json;
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-    res.json = function(body) {
-      res.locals.responseBody = body;
-      return originalJson.call(this, body);
-    };
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
 
-    res.on('finish', () => {
-      const duration = Date.now() - start;
-      const logLine = [
-        req.method,
-        req.path,
-        res.statusCode,
-        `${duration}ms`,
-        res.locals.responseBody ? JSON.stringify(res.locals.responseBody) : ''
-      ].join(' ');
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
 
-      log(logLine.slice(0, 200)); // Truncate very long logs
-    });
-  }
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
+      log(logLine);
+    }
+  });
+
   next();
 });
 
-// Production error handler (no stack traces leaked)
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status || 500;
-  res.status(status).json({
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error'
+(async () => {
+  const server = await registerRoutes(app);
+
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
   });
 
-  if (status >= 500) {
-    console.error('Server Error:', {
-      message: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-      path: _req.path
-    });
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
   }
-});
 
-// Server initialization
-async function initializeServer() {
-  try {
-    // Load routes and middleware
-    const server = await registerRoutes(app);
-
-    // Static assets handling
-    if (process.env.NODE_ENV === 'production') {
-      serveStatic(app);
-
-      // Production-specific middleware
-      app.use((req, res, next) => {
-        if (req.headers['x-forwarded-proto'] !== 'https') {
-          return res.redirect(301, `https://${req.headers.host}${req.url}`);
-        }
-        next();
-      });
-    } else {
-      await setupVite(app, server);
-    }
-
-    // Start server
-    const port = parseInt(process.env.PORT || '5000');
-    return server.listen(port, '0.0.0.0', () => {
-      log(`Server running in ${process.env.NODE_ENV} mode on port ${port}`);
-
-      // Memory monitoring
-      if (process.env.NODE_ENV === 'production') {
-        setInterval(() => {
-          const usedMB = process.memoryUsage().heapUsed / 1024 / 1024;
-          if (usedMB > 450) { // Alert at 450MB (under 512MB limit)
-            log(`Memory warning: ${usedMB.toFixed(2)}MB used`);
-          }
-        }, 30000); // Check every 30 seconds
-      }
-    });
-  } catch (error) {
-    console.error('Server initialization failed:', error);
-    process.exit(1);
-  }
-}
-
-// Start server with error handling
-initializeServer().catch(error => {
-  console.error('Fatal startup error:', error);
-  process.exit(1);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  log('SIGTERM received - shutting down gracefully');
-  process.exit(0);
-});
-
-// Unhandled rejection tracking
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled rejection at:', promise, 'reason:', reason);
-});
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
+  const port = parseInt(process.env.PORT || '5000');
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
+})();
