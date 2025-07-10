@@ -4,11 +4,12 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx server/index.ts",
+    "dev": "NODE_ENV=development tsx watch server/index.ts",
     "build": "tsc && vite build",
-    "start": "NODE_ENV=production node dist/server/index.js",
-    "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "start": "NODE_ENV=production node server/index.js",  // Changed from dist/server
+    "check": "tsc --noEmit",
+    "db:push": "drizzle-kit push",
+    "prebuild": "npx update-browserslist-db@latest"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
