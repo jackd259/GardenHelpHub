@@ -6,6 +6,7 @@ import path from "path";
 import { storage } from "./storage";
 import { insertUserSchema, insertPostSchema, insertCommentSchema, insertLikeSchema } from "@shared/schema";
 import { z } from "zod";
+import { ZodError } from "zod"; // at the top if not imported yet
 
 // Configure multer for file uploads
 const storage_config = multer.diskStorage({
@@ -95,8 +96,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/posts", upload.single('image'), async (req, res) => {
-  console.log("📦 POST /api/posts body:", req.body);   // 👈 ADD
-  console.log("🖼️ POST /api/posts file:", req.file);   // 👈 ADD
+  console.log("📦 POST /api/posts body:", req.body);
+  console.log("🖼️ POST /api/posts file:", req.file);
 
   try {
     const postData = insertPostSchema.parse({
@@ -104,16 +105,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       userId: parseInt(req.body.userId),
       imageUrl: req.file ? `/uploads/${req.file.filename}` : null
     });
+
     const post = await storage.createPost(postData);
     res.json(post);
-    } catch (error) {
-      console.error("❌ POST /api/posts error:", error); // 👈 ADD THIS LINE
-      if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: "File too large (max 5MB)" });
-      }
-      res.status(400).json({ message: "Invalid post data" });
+  } catch (error) {
+    console.error("❌ POST /api/posts error:", error);
+
+    if (error instanceof ZodError) {
+      console.error("📛 Zod validation errors:", error.errors);
+      return res.status(400).json({ message: "Validation failed", errors: error.errors });
     }
-  });
+
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: "File too large (max 5MB)" });
+    }
+
+    res.status(400).json({ message: "Invalid post data" });
+  }
+});
 
   // Comment routes
   app.get("/api/posts/:id/comments", async (req, res) => {
