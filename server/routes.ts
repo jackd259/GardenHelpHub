@@ -19,7 +19,7 @@ const storage_config = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage_config,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -40,13 +40,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
         return res.status(400).json({ message: "User already exists" });
       }
-      
+
       const user = await storage.createUser(userData);
       res.json(user);
     } catch (error) {
@@ -71,11 +71,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/posts", async (req, res) => {
     try {
       const category = req.query.category as string;
-      const posts = category ? 
-        await storage.getPostsByCategory(category) : 
+      const posts = category ?
+        await storage.getPostsByCategory(category) :
         await storage.getPosts();
       res.json(posts);
     } catch (error) {
+      console.error("❌ GET /api/posts error:", error); // 👈 ADD THIS LINE
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -94,19 +95,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/posts", upload.single('image'), async (req, res) => {
-    try {
-      const postData = insertPostSchema.parse({
-        ...req.body,
-        userId: parseInt(req.body.userId), // Convert string to number
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : null
-      });
-      const post = await storage.createPost(postData);
-      res.json(post);
+  console.log("📦 POST /api/posts body:", req.body);   // 👈 ADD
+  console.log("🖼️ POST /api/posts file:", req.file);   // 👈 ADD
+
+  try {
+    const postData = insertPostSchema.parse({
+      ...req.body,
+      userId: parseInt(req.body.userId),
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+    });
+    const post = await storage.createPost(postData);
+    res.json(post);
     } catch (error) {
-      if (error instanceof multer.MulterError) {
-        if (error.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ message: "File too large (max 5MB)" });
-        }
+      console.error("❌ POST /api/posts error:", error); // 👈 ADD THIS LINE
+      if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: "File too large (max 5MB)" });
       }
       res.status(400).json({ message: "Invalid post data" });
     }
@@ -131,13 +134,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         postId,
         userId: parseInt(req.body.userId) // Convert string to number
       });
-      
+
       const comment = await storage.createComment(commentData);
-      
+
       // Update comment count
       const commentCount = await storage.getCommentsByPost(postId);
       await storage.updatePostCommentCount(postId, commentCount.length);
-      
+
       res.json(comment);
     } catch (error) {
       console.error("Comment creation error:", error);
@@ -150,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const postId = parseInt(req.params.id);
       const { userId } = req.body;
-      
+
       const existingLike = await storage.getLike(postId, userId);
       if (existingLike) {
         await storage.deleteLike(postId, userId);
