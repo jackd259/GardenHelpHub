@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "echo '🔧 BUILD: Starting Vite build...' && vite build && echo '🔧 BUILD: Building backend...' && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && echo '🔧 BUILD: Running drizzle push...' && npm run db:push",
-    "db:push": "drizzle-kit push:pg",  // Make sure this matches your drizzle-kit command
+    "db:push": "drizzle-kit push:pg",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit"
   },
