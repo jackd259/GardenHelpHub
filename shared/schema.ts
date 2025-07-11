@@ -45,12 +45,15 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
-export const insertPostSchema = createInsertSchema(posts).omit({
+export const insertPostSchema = createInsertSchema(posts, {
+  imageUrl: z.string().nullable().optional(), // 👈 allow null or undefined
+}).omit({
   id: true,
   likes: true,
   commentCount: true,
   createdAt: true,
 });
+
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
   id: true,
