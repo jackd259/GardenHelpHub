@@ -8,8 +8,7 @@
     "build": "echo '🔧 BUILD: Starting Vite build...' && vite build && echo '🔧 BUILD: Building backend...' && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && echo '🔧 BUILD: Running drizzle push...' && npm run db:push",
     "db:push": "drizzle-kit push",
     "start": "NODE_ENV=production node dist/index.js",
-    "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "check": "tsc"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

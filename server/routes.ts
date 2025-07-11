@@ -108,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const post = await storage.createPost(postData);
     res.json(post);
-  } } catch (error) {
+  } catch (error) {
   console.error("❌ POST /api/posts error:", error); // this line already exists
 
   if (error instanceof ZodError) {
