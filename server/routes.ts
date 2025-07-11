@@ -109,21 +109,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const post = await storage.createPost(postData);
     res.json(post);
   } catch (error) {
-  console.error("❌ POST /api/posts error:", error); // this line already exists
+    console.error("❌ POST /api/posts error:", error);
 
-  if (error instanceof ZodError) {
-    return res.status(400).json({
-      message: "Validation failed",
-      issues: error.issues,
-    });
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: "File too large (max 5MB)" });
+    }
+
+    if (error instanceof z.ZodError) {
+      console.error("📛 Zod validation errors:", error.errors);
+      return res.status(400).json({
+        message: "Validation failed",
+        issues: error.errors,
+      });
+    }
+
+    res.status(400).json({ message: "Invalid post data" });
   }
-
-  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ message: "File too large (max 5MB)" });
-  }
-
-  res.status(400).json({ message: "Invalid post data" });
-}
 
 });
 
